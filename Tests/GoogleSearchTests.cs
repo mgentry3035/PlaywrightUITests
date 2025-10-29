@@ -19,8 +19,8 @@ namespace PlaywrightUITests.Tests
             playwright = await Playwright.CreateAsync();
             browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
             {
-                Headless = false,   // 👀 Set to false so we can see what’s happening
-                SlowMo = 200        // ⏳ Slows down actions to reduce bot detection
+                Headless = false,   // 👀 Set to false to watch execution
+                SlowMo = 200        // ⏳ Add delay between actions for realism
             });
             var context = await browser.NewContextAsync();
             page = await context.NewPageAsync();
@@ -39,7 +39,7 @@ namespace PlaywrightUITests.Tests
             Console.WriteLine("➡️ Navigating to Google...");
             await page.GotoAsync("https://www.google.com");
 
-            // Step 1: Accept cookies if prompted
+            // Step 1: Accept cookies (if shown)
             var acceptBtn = await page.QuerySelectorAsync("button:has-text('Accept')");
             if (acceptBtn != null)
             {
@@ -47,57 +47,73 @@ namespace PlaywrightUITests.Tests
                 await acceptBtn.ClickAsync();
             }
 
-            // Step 2: Perform the search
+            // Step 2: Search for Prometheus Group
             Console.WriteLine("➡️ Searching for 'Prometheus Group'...");
             await page.FillAsync("[name='q']", "Prometheus Group");
             await page.PressAsync("[name='q']", "Enter");
 
-            // Step 3: Wait for search results to load
+            // Step 3: Wait for search results or detect CAPTCHA
             Console.WriteLine("⏳ Waiting for search results...");
-            await page.WaitForNavigationAsync(new PageWaitForNavigationOptions
-            {
-                WaitUntil = WaitUntilState.DOMContentLoaded
-            });
-            await page.Locator("h3").First.WaitForAsync(); // Wait for a result heading
+            await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
 
-            // Step 4: Detect possible CAPTCHA page
-            var html = await page.ContentAsync();
-            if (html.Contains("Our systems have detected unusual traffic") || html.Contains("recaptcha"))
+            try
             {
-                Assert.Inconclusive("⚠️ Google blocked automation with CAPTCHA. Test skipped to prevent false failure.");
-                return;
+                await page.Locator("h3").First.WaitForAsync(new LocatorWaitForOptions
+                {
+                    Timeout = 60000 // Wait up to 60 seconds for search results
+                });
+            }
+            catch (TimeoutException)
+            {
+                var html = await page.ContentAsync();
+                if (html.Contains("Our systems have detected unusual traffic") || html.Contains("recaptcha"))
+                {
+                    Console.WriteLine("⚠️ CAPTCHA detected — skipping test.");
+                    Assert.Inconclusive("⚠️ CAPTCHA detected — skipping test to prevent false failure.");
+                    return;
+                }
+                else
+                {
+                    await page.ScreenshotAsync(new PageScreenshotOptions { Path = "GoogleSearch_Failure.png" });
+                    Assert.Fail("❌ Timed out waiting for search results — possible layout change or network issue.");
+                }
             }
 
-            // Step 5: Validate that results contain 'Prometheus Group'
+            // Step 4: Verify "Prometheus Group" appears in search results
             Console.WriteLine("✅ Verifying that results contain 'Prometheus Group'...");
             var firstResult = await page.Locator("h3").First.InnerTextAsync();
             firstResult.Should().Contain("Prometheus Group", "the top search result should mention Prometheus Group");
 
-            // Step 6: Click the 'Contact Us' link (first one found)
-            Console.WriteLine("➡️ Attempting to click 'Contact Us' link...");
+            // Step 5: Click the "Contact Us" link
+            Console.WriteLine("➡️ Looking for 'Contact Us' link...");
             var contactLink = page.Locator("a:has-text('Contact Us')");
             var linkCount = await contactLink.CountAsync();
 
             if (linkCount == 0)
             {
-                Assert.Inconclusive("⚠️ No 'Contact Us' link was found in the search results.");
+                Assert.Inconclusive("⚠️ No 'Contact Us' link found in search results.");
                 return;
             }
 
+            Console.WriteLine("✅ Clicking first 'Contact Us' link...");
             await contactLink.First.ClickAsync();
-            await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
-            await page.WaitForTimeoutAsync(2000); // Allow page content to stabilize
 
-            // Step 7: Verify we reached a contact page
-            Console.WriteLine("✅ Contact page detected. Filling out form...");
+            // Step 6: Wait for Contact page to load
+            await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+            await page.WaitForTimeoutAsync(2000); // Let content stabilize
+
+            // Step 7: Fill name fields
+            Console.WriteLine("✏️ Filling name fields...");
             await page.FillAsync("input[name*='first']", "Michael");
             await page.FillAsync("input[name*='last']", "Gentry");
 
-            // Step 8: Submit form
+            // Step 8: Submit the form
+            Console.WriteLine("➡️ Submitting form...");
             await page.ClickAsync("button[type='submit']");
-            await page.WaitForTimeoutAsync(2000); // Give page time to show validation errors
+            await page.WaitForTimeoutAsync(2000); // Wait for validation to show
 
-            // Step 9: Validate required field messages
+            // Step 9: Validate required field errors
+            Console.WriteLine("🔍 Checking required field validation...");
             var errorCount = await page.Locator(".error, .validation-message, [aria-invalid='true']").CountAsync();
             Assert.That(errorCount, Is.GreaterThanOrEqualTo(4), "There should be at least 4 required fields unfilled.");
 
@@ -105,4 +121,5 @@ namespace PlaywrightUITests.Tests
         }
     }
 }
+
 
