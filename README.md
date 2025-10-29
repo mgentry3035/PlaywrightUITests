@@ -1,44 +1,47 @@
 #  PlaywrightUITests
 
 Automated web UI testing project built with **C#**, **Playwright**, **NUnit**, and **FluentAssertions**.  
-This project simulates an end-to-end web interaction using **Google Search** and a **Contact Us** form to demonstrate robust, dynamic UI automation.
+This project performs an end-to-end browser automation workflow through Google Search and the Prometheus Group website to test form validation on the “Contact Us” page.
 
 ---
 
 ##  Overview
 
 This project automates the following workflow:
-1. Navigate to [Google](https://www.google.com)  
-2. Search for **"Prometheus Group"**  
-3. Verify that results contain the term  
-4. Click the **"Contact Us"** link  
-5. Fill the **First Name** and **Last Name** fields  
-6. Submit the form  
-7. Verify that **4+ required-field validation messages** appear  
+
+1. Navigate to [Google](https://www.google.com)
+2. Search for **"Prometheus Group"**
+3. Verify that results contain the expected company name
+4. Click the **Prometheus Group** link if a direct **“Contact Us”** link is not visible
+5. On the Prometheus Group website, locate and click **“Contact Us”**
+6. Fill in **First Name** and **Last Name** fields
+7. Click the **“Contact Us”** or **Submit** button
+8. Validate that **4 or more required fields** are flagged as invalid
 
 ---
 
 ##  Requirements
 
 Before running the tests, ensure you have:
+
 - [.NET SDK 9.0+](https://dotnet.microsoft.com/en-us/download)
-- Internet connection for browser automation
+- Internet connection (for browser automation)
 - Playwright browsers installed
 
-Install browsers using:
+Install Playwright browsers using PowerShell:
 ```bash
 pwsh bin/Debug/net9.0/playwright.ps1 install
 ```
 
 ---
 
-## ⚙️ Project Structure
+##  Project Structure
 
 ```
 PlaywrightUITests/
 │
 ├── Tests/
-│   └── GoogleSearchTests.cs        # Main test suite
+│   └── GoogleSearchTests.cs        # Main automation test suite
 │
 ├── PlaywrightUITests.csproj        # Project definition
 └── README.md                       # This file
@@ -48,19 +51,17 @@ PlaywrightUITests/
 
 ##  Setup Instructions
 
-### 1️ Clone or Download
-If using Git:
+### 1️ Clone or Download the Repository
 ```bash
 git clone https://github.com/<your-username>/PlaywrightUITests.git
 cd PlaywrightUITests
 ```
 
-Or download the folder directly from your GitHub repository.
+Or, download the folder directly from GitHub.
 
 ---
 
 ### 2️ Restore Dependencies
-Install NuGet packages and Playwright browsers:
 ```bash
 dotnet restore
 pwsh bin/Debug/net9.0/playwright.ps1 install
@@ -72,7 +73,7 @@ pwsh bin/Debug/net9.0/playwright.ps1 install
 ```bash
 dotnet build
 ```
-You should see:
+Expected output:
 ```
 Build succeeded.
 ```
@@ -83,51 +84,52 @@ Build succeeded.
 ```bash
 dotnet test
 ```
-
-Expected output:
-```
-Passed!  - Failed: 0, Passed: 1, Skipped: 0, Total: 1
-```
-If Google triggers a CAPTCHA, the test will **skip** itself automatically and mark as *Inconclusive* to avoid false failures.
+If Google shows a CAPTCHA or the layout changes, the test will **mark itself inconclusive** and save a screenshot.
 
 ---
 
 ##  Notes
 
-- Test runs with **Headless = false** and **SlowMo = 200 ms** for more natural browsing and visibility.
-- Test includes a **60-second timeout** for dynamic Google content.
-- If CAPTCHA or network delays occur, the test:
-  - Detects and logs it  
-  - Saves a **screenshot (GoogleSearch_Failure.png)** in the project root directory  
-  - Marks the test as *Inconclusive* instead of failing  
-- You can optionally store screenshots in a subfolder:
-  ```csharp
-  await page.ScreenshotAsync(new PageScreenshotOptions { Path = "Screenshots/GoogleSearch_Failure.png" });
-  ```
-  (Create a `Screenshots` folder manually if you prefer this structure.)
-- Clean teardown ensures browser and Playwright processes close safely.
+- Runs with **Headless = false** and **SlowMo = 200 ms** for easy observation.
+- Includes intelligent logic to:
+  - Detect and skip CAPTCHA pages (with screenshots saved as `GoogleSearch_Captcha.png`)
+  - Handle dynamic or changing Google layouts
+  - Follow links to the Prometheus Group site when no direct “Contact Us” link is present
+  - Support both `<button>` and `<input type='submit'>` form submissions
+- Screenshots are automatically captured in your project root directory for debugging.
+
+---
+
+##  Possible Screenshots Created
+
+| Screenshot Name | When It's Captured |
+|------------------|--------------------|
+| `GoogleSearch_Captcha.png` | When CAPTCHA page appears |
+| `GoogleSearch_Failure.png` | Timeout waiting for results |
+| `NoPrometheusResult.png` | No Prometheus link found on Google |
+| `NoContactUs_OnSite.png` | No Contact Us link found on Prometheus site |
+| `NoSubmitFound.png` | No form submit button found on contact page |
 
 ---
 
 ##  Author
 
 **Michael Gentry**  
+Entry-Level QA / Embedded Systems Engineer Candidate  
 [GitHub Profile](https://github.com/mgentry3035)
 
 ---
 
-## 🏁 Test Summary
+##  Test Summary
 
 | Step | Description | Expected Result |
 |------|--------------|----------------|
 | 1 | Go to Google | Page loads successfully |
-| 2 | Search for "Prometheus Group" | Results appear with matching text |
-| 3 | Click "Contact Us" | Navigates to contact page |
-| 4 | Fill name fields | First/Last names entered |
-| 5 | Submit form | Page shows validation messages |
-| 6 | Count required errors | ≥ 4 validation errors detected |
-| 7 | CAPTCHA detected (optional) | Test skipped as Inconclusive |
-| 4 | Fill name fields | First and last names entered |
-| 5 | Submit form | Validation messages appear |
-| 6 | Count required errors | ≥ 4 required-field errors detected |
+| 2 | Search for "Prometheus Group" | Search results display company name |
+| 3 | Find and click company link | Prometheus site opens |
+| 4 | Click "Contact Us" | Contact form page loads |
+| 5 | Fill name fields | First/Last names entered |
+| 6 | Click Contact Us button | Form attempts to submit |
+| 7 | Validate errors | ≥ 4 validation errors detected |
+| 8 | CAPTCHA detected | Test marked inconclusive |
 
